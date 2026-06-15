@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }} / ${{ matrix.compiler }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler: [gcc, clang]
+        exclude:
+          - os: macos-latest
+            compiler: gcc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure compiler
+        if: runner.os == 'Linux'
+        run: |
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            echo "CC=gcc"  >> $GITHUB_ENV
+            echo "CXX=g++"  >> $GITHUB_ENV
+          else
+            echo "CC=clang"   >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run CLI self-test
+        run: ./build/sha2 selftest
+
+  sanitizers:
+    name: ASan + UBSan (clang)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure with sanitizers
+        env:
+          CC: clang
+          CXX: clang++
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DSHA2_ENABLE_ASAN=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  fuzz-smoke:
+    name: Fuzz smoke (60s each)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure fuzzers
+        env:
+          CC: clang
+          CXX: clang++
+        run: cmake -S . -B build -DSHA2_BUILD_FUZZERS=ON -DSHA2_BUILD_TESTS=OFF
+      - name: Build fuzzers
+        run: cmake --build build --parallel --target fuzz_sha256 fuzz_hmac
+      - name: Run fuzz_sha256
+        run: ./build/fuzz_sha256 -max_total_time=60 -print_final_stats=1
+      - name: Run fuzz_hmac
+        run: ./build/fuzz_hmac -max_total_time=60 -print_final_stats=1
+
+  vectors-reproducible:
+    name: KAT corpus is reproducible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate KAT header and diff
+        run: |
+          python3 tests/vectors/generate_kat.py > /tmp/sha256_kat.hpp
+          diff -u tests/vectors/sha256_kat.hpp /tmp/sha256_kat.hpp

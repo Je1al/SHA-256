@@ -1,2 +1,23 @@
-sha256_demo
+# Build output
+/build/
+/cmake-build-*/
+*.o
+*.obj
+*.a
+*.exe
+
+# Compiled artefacts / fuzzing (anchored to repo root so include/sha2/ is kept)
+/sha2
+/sha2_bench
+/fuzz_sha256
+/fuzz_hmac
+crash-*
+leak-*
+timeout-*
+corpus/
+
+# Editor / OS
 .DS_Store
+.vscode/
+.idea/
+compile_commands.json
