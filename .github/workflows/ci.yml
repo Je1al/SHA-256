@@ -19,7 +19,7 @@ jobs:
           - os: macos-latest
             compiler: gcc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Configure compiler
         if: runner.os == 'Linux'
@@ -48,7 +48,7 @@ jobs:
     name: ASan + UBSan (clang)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure with sanitizers
         env:
           CC: clang
@@ -63,7 +63,7 @@ jobs:
     name: Fuzz smoke (60s each)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure fuzzers
         env:
           CC: clang
@@ -80,7 +80,7 @@ jobs:
     name: KAT corpus is reproducible
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Regenerate KAT header and diff
         run: |
           python3 tests/vectors/generate_kat.py > /tmp/sha256_kat.hpp
